@@ -1,0 +1,6 @@
+
+---
+# $env:BUILD_BUILDNUMBER     
+@@WILOOP@@
+$(Get-TypeCaption $widetail)  * $($widetail.id): $($widetail.fields.'DeloitteFinTech.SolvasScrum.ReleaseNotes')  
+@@WILOOP@@ 

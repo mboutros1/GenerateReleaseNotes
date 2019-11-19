@@ -1,8 +1,15 @@
-$n = "sadfasdf
-asdfasdf asdf  asd 
-## asdfasdf 
-## asdfmmm
-assdf
-"
+$env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI = "http://tfsabs.sltc.com:8080/tfs/DefaultCollection/"
+$env:SYSTEM_TEAMPROJECT = "ABSSuite Web"
+$env:RELEASE_RELEASEID = "26279"
+$env:RELEASE_DEFINITIONID = "25"
+$env:RELEASE_ENVIRONMENTNAME = "Wfargo.Release"
+$env:BUILD_BUILDID = "38844"
+$env:BUILD_DEFINITIONNAME = "ABS-Sprint-11.12"
+$env:RELEASE_DEFINITIONNAME = "AR.WFargo"
+$env:BUILD_BUILDNUMBER = "11.12.108 - 20191118.38872"
+$env:Ver = "11.12.108"
+Write-Host "Ver $env:Ver" 
+$d = "C:\Users\miboutros\OneDrive - Deloitte (O365D)\Scripts\ABSRNotes\GenerateReleaseNotes\TestResult\"
 
-Write-Host $n
+.\AccGenerateReleaseNotesTask\GenerateReleaseNotes.ps1 -outputfile "$d\rd.md"  -publishLoc "$d\pub\" -notesRootPath "$d\root" -templateLocation="File" -templatefile "$d\RNTemplate.txt" -emptySetText ="None" -generateForOnlyPrimary $false -usedefaultcreds $true -generateForCurrentRelease $false -maxWi 500 -maxChanges 500 -appendToFile $false -showParents $true -wiFilter "Bug,PRODUCT BACKLOG ITEM,Feature,Epic" -unifiedList $true -startReleaseId 26057 -overrideStageName "Bus.Wfargo"
+(outputfile=E:\Agents\DarkKnight\_work\r4\a\releasenotes.md) 

@@ -52,6 +52,10 @@ param (
     [parameter(Mandatory = $false, HelpMessage = "Only consider the current release")]
     $generateForCurrentRelease,
     
+
+    [parameter(Mandatory = $false, HelpMessage = "From Release Id, override the starting point of release instead of using the last successful release")]
+    $overrideStartReleaseId,
+ 
     [parameter(Mandatory = $false, HelpMessage = "Overide the name of the release stage to compare against")]
     $overrideStageName,
 
@@ -175,10 +179,17 @@ else {
             else {
                 # add all the past releases where the this stage was not a success
                 $stage = $r.environments | Where-Object { $_.name -eq $stageName }
-                if ($stage -ne $null) {
+                if ($null -ne $stage) {
                     Write-Verbose "   Adding release [$r.id] to list"
                     $releases += $r
-                    if ($stage.status -eq "succeeded") {
+                    if ($null -ne $overrideStartReleaseId ) {
+                        if ($stage.releaseId -eq $overrideStartReleaseId) {
+                            # we have found a successful release in this stage so quit
+                            Write-Verbose "   Finished adding releases as [$r.id] was a successful release"
+                            break
+                        }
+                    }
+                    elseif ($stage.status -eq "succeeded") {
                         # we have found a successful release in this stage so quit
                         Write-Verbose "   Finished adding releases as [$r.id] was a successful release"
                         break

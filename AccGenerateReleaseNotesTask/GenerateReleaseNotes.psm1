@@ -30,9 +30,9 @@ function Get-WorkItemDataFromBuild {
     Write-Verbose "        Getting up to $($maxItems) associated work items for build [$($buildid)]"
     $uri = "$($tfsUri)/$($teamproject)/_apis/build/builds/$($buildid)/workitems?api-version=2.0&`$top=$($maxItems)"
     $jsondata = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-Write-Verbose "        Found $($jsondata.value.Count) WI directly associated with build"
+    Write-Verbose "        Found $($jsondata.value.Count) WI directly associated with build"
 
-$jsondata
+    $jsondata
 }
 
 function Get-CommitInfoFromGitRepo {
@@ -51,64 +51,64 @@ function Get-CommitInfoFromGitRepo {
     $uri = "$($tfsUri)/$($teamproject)/_apis/build/builds?definitions=$($build.definition.id)&maxTime=$($build.queueTime)&queryOrder=finishTimeDescending&statusFilter=completed&resultFilter=succeeded&branchName=$($build.sourceBranch)&maxBuildsPerDefinition=1&api-version=4.1"
     $previousBuild = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
 
-if ($previousBuild.count -eq 0) {
-    # This is the first build for this branch
-    # Simply take $maxCommits commits from Git history
-    $uri = "$($tfsUri)/$($teamproject)/_apis/git/repositories/$($build.repository.id)/commits?searchCriteria.includeWorkItems=true&searchCriteria.`$top=$maxCommits&searchCriteria.compareVersion.version=$($build.sourceVersion)&searchCriteria.compareVersion.versionType=commit&`$top=$maxCommits&api-version=4.1"
-    $commits = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-}
-else {
-    Write-Verbose "        Getting up to $($maxWi) associated work items from commits"
+    if ($previousBuild.count -eq 0) {
+        # This is the first build for this branch
+        # Simply take $maxCommits commits from Git history
+        $uri = "$($tfsUri)/$($teamproject)/_apis/git/repositories/$($build.repository.id)/commits?searchCriteria.includeWorkItems=true&searchCriteria.`$top=$maxCommits&searchCriteria.compareVersion.version=$($build.sourceVersion)&searchCriteria.compareVersion.versionType=commit&`$top=$maxCommits&api-version=4.1"
+        $commits = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
+    }
+    else {
+        Write-Verbose "        Getting up to $($maxWi) associated work items from commits"
 
-    $commitSearchCriteria = @{
-        "$skip"            = 0;
-        "$top"             = 5000;
-        "includeWorkItems" = $true;
-        "itemVersion"      = @{ "version" = $previousBuild.value[0].sourceVersion; "versionType" = 2 };
-        "compareVersion"   = @{ "version" = $build.sourceVersion; "versionType" = 2 }
-    };
-    $uri = "$($tfsUri)/$($teamproject)/_apis/git/repositories/$($build.repository.id)/commitsbatch?api-version=4.1"
-    $commits = Invoke-PostCommand -uri $uri -Body $commitSearchCriteria -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-}
+        $commitSearchCriteria = @{
+            "$skip"            = 0;
+            "$top"             = 5000;
+            "includeWorkItems" = $true;
+            "itemVersion"      = @{ "version" = $previousBuild.value[0].sourceVersion; "versionType" = 2 };
+            "compareVersion"   = @{ "version" = $build.sourceVersion; "versionType" = 2 }
+        };
+        $uri = "$($tfsUri)/$($teamproject)/_apis/git/repositories/$($build.repository.id)/commitsbatch?api-version=4.1"
+        $commits = Invoke-PostCommand -uri $uri -Body $commitSearchCriteria -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
+    }
 
-$commitData = @()
-foreach ($c in $commits.value) {
-    if (!$c.message -and !$c.comment) { continue } # skip commits with no description
-    try {
-        # we can get more detail if the changeset is on VSTS or TFS
-        if ($c.location) {
-            $commitData += Get-Detail -uri $c.location -usedefaultcreds $usedefaultcreds
+    $commitData = @()
+    foreach ($c in $commits.value) {
+        if (!$c.message -and !$c.comment) { continue } # skip commits with no description
+        try {
+            # we can get more detail if the changeset is on VSTS or TFS
+            if ($c.location) {
+                $commitData += Get-Detail -uri $c.location -usedefaultcreds $usedefaultcreds
+            }
+            else {
+                $commitData += Get-Detail -uri $c.url -usedefaultcreds $usedefaultcreds
+            }
         }
-        else {
-            $commitData += Get-Detail -uri $c.url -usedefaultcreds $usedefaultcreds
+        catch {
+            Write-warning "        Unable to get details of changeset/commit as it is not stored in TFS/VSTS"
+            Write-warning "        For [$($c.id)]"
+            Write-warning "        Just using the details we have"
+            $commitData += $c
         }
     }
-    catch {
-        Write-warning "        Unable to get details of changeset/commit as it is not stored in TFS/VSTS"
-        Write-warning "        For [$($c.id)]"
-        Write-warning "        Just using the details we have"
-        $commitData += $c
-    }
-}
 
-$wiCount = 0
-$workItemData = @()
-for ($commitIndex = 0; ($commitIndex -lt $commits.count) -and ($wiCount -lt $maxWi); ++$commitIndex) {
-    $workItems = $commits.value[$commitIndex].workItems
-    for ($workItemIndex = 0; ($workItemIndex -lt $workItems.Length) -and ($wiCount -lt $maxWi); ++$workItemIndex) {
-        $workItemData += $workItems[$workItemIndex]
-        $wiCount += 1
+    $wiCount = 0
+    $workItemData = @()
+    for ($commitIndex = 0; ($commitIndex -lt $commits.count) -and ($wiCount -lt $maxWi); ++$commitIndex) {
+        $workItems = $commits.value[$commitIndex].workItems
+        for ($workItemIndex = 0; ($workItemIndex -lt $workItems.Length) -and ($wiCount -lt $maxWi); ++$workItemIndex) {
+            $workItemData += $workItems[$workItemIndex]
+            $wiCount += 1
+        }
     }
-}
 
-$result = @{
-    "commits"   = $commitData;
-    "workItems" = @{
-        "count" = $wiCount;
-        "value" = $workItemData
+    $result = @{
+        "commits"   = $commitData;
+        "workItems" = @{
+            "count" = $wiCount;
+            "value" = $workItemData
+        }
     }
-}
-$result
+    $result
 }
 
 function Expand-WorkItemData {
@@ -226,35 +226,35 @@ function Get-BuildChangeSets {
     try { 
         $uri = "$($tfsUri)/$($teamproject)/_apis/build/builds/$($buildid)/changes?api-version=2.0&`$top=$($maxItems)"
         $jsondata = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-    foreach ($cs in $jsondata.value) {
-        if (!$cs.message) { continue } # skip commits with no description
-        # we can get more detail if the changeset is on VSTS or TFS
-        try {
-            $csList += Get-Detail -uri $cs.location -usedefaultcreds $usedefaultcreds
-            #look for merged commits a
-            $range = Get-MergeRange  -tfsUri $tfsUri -teamproject $teamproject  -id $cs.id -loc $cs.location -usedefaultcreds $usedefaultcreds
-            if (($range.from -gt 0) -and ($range.to -gt 0)) {
-                for ($i = $range.from; $i -lt ($range.to + 1) ; $i++ ) {
-                    #get and add the merged  detail
-                    $csurl = "$($tfsUri)/_apis/tfvc/changesets/$i" 
+        foreach ($cs in $jsondata.value) {
+            if (!$cs.message) { continue } # skip commits with no description
+            # we can get more detail if the changeset is on VSTS or TFS
+            try {
+                $csList += Get-Detail -uri $cs.location -usedefaultcreds $usedefaultcreds
+                #look for merged commits a
+                $range = Get-MergeRange  -tfsUri $tfsUri -teamproject $teamproject  -id $cs.id -loc $cs.location -usedefaultcreds $usedefaultcreds
+                if (($range.from -gt 0) -and ($range.to -gt 0)) {
+                    for ($i = $range.from; $i -lt ($range.to + 1) ; $i++ ) {
+                        #get and add the merged  detail
+                        $csurl = "$($tfsUri)/_apis/tfvc/changesets/$i" 
                       
-                    $csList += Get-Detail -uri $csurl -usedefaultcreds $usedefaultcreds                    
+                        $csList += Get-Detail -uri $csurl -usedefaultcreds $usedefaultcreds                    
+                    }
                 }
             }
-        }
-        catch {
-            Write-warning "        Unable to get details of changeset/commit as it is not stored in TFS/VSTS"
-            Write-warning "        For [$($cs.id)] location [$($cs.location)]"
-            Write-warning "        Just using the details we have from the build"
-            $csList += $cs
+            catch {
+                Write-warning "        Unable to get details of changeset/commit as it is not stored in TFS/VSTS"
+                Write-warning "        For [$($cs.id)] location [$($cs.location)]"
+                Write-warning "        Just using the details we have from the build"
+                $csList += $cs
+            }
         }
     }
-}
-catch {
-    Write-warning "        Unable to get details of changeset/commit, most likely cause is the build has been deleted"
-    Write-warning $_.Exception.Message
-}
-$csList
+    catch {
+        Write-warning "        Unable to get details of changeset/commit, most likely cause is the build has been deleted"
+        Write-warning $_.Exception.Message
+    }
+    $csList
 }
 
 function Get-Detail {
@@ -265,7 +265,7 @@ function Get-Detail {
     )
 
     $jsondata = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-$jsondata
+    $jsondata
 }
 
 function Get-Build {
@@ -280,7 +280,7 @@ function Get-Build {
 
     $uri = "$($tfsUri)/$($teamproject)/_apis/build/builds/$($buildid)?api-version=2.0"
     $jsondata = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-$jsondata 
+    $jsondata 
 }
 
 function Get-BuildsByDefinitionId {
@@ -295,7 +295,7 @@ function Get-BuildsByDefinitionId {
 
     $uri = "$($tfsUri)/$($teamproject)/_apis/build/builds?definitions=$($builddefid)&api-version=2.0"
     $jsondata = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-$jsondata.value
+    $jsondata.value
 }
 
 function Get-ReleaseDefinitionByName {
@@ -309,7 +309,7 @@ function Get-ReleaseDefinitionByName {
 	
     $uri = "$($tfsUri)/$($teamproject)/_apis/release/definitions?api-version=3.0-preview.1"
     $jsondata = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-$jsondata.value | where { $_.name -eq $releasename }
+    $jsondata.value | where { $_.name -eq $releasename }
 
 }
 
@@ -334,7 +334,7 @@ function Get-Release {
     $uri = "$($rmtfsUri)/$($teamproject)/_apis/release/releases/$($releaseid)?api-version=3.0-preview"
 
     $jsondata = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-$jsondata
+    $jsondata
 }
 
 function Get-BuildReleaseArtifacts {
@@ -429,7 +429,6 @@ function Invoke-GetCommand {
     $webclient.Encoding = [System.Text.Encoding]::UTF8
 	
     if ([System.Convert]::ToBoolean($usedefaultcreds) -eq $true) {
-        Write-Verbose "Using default credentials"
         $webclient.UseDefaultCredentials = $true
     } 
     elseif ([string]::IsNullOrEmpty($debugpat) -eq $false) {
@@ -462,7 +461,6 @@ function Invoke-GetWithHeaderCommand {
     $webclient.Encoding = [System.Text.Encoding]::UTF8
 	
     if ([System.Convert]::ToBoolean($usedefaultcreds) -eq $true) {
-        Write-Verbose "Using default credentials"
         $webclient.UseDefaultCredentials = $true
     } 
     elseif ([string]::IsNullOrEmpty($debugpat) -eq $false) {
@@ -501,7 +499,6 @@ function Invoke-PostCommand() {
     $headers["Accept-Charset"] = "utf-8"
 
     if ([System.Convert]::ToBoolean($usedefaultcreds) -eq $true) {
-        Write-Verbose "Using default credentials"
         Invoke-RestMethod $uri -Method "POST" -Headers $headers -ContentType "application/json" -Body ([System.Text.Encoding]::UTF8.GetBytes($jsonBody)) -UseDefaultCredentials
     } 
     else {
@@ -543,22 +540,21 @@ function Invoke-PutCommand() {
     $headers["Accept-Charset"] = "utf-8"
 
     if ([System.Convert]::ToBoolean($usedefaultcreds) -eq $true) {
-        Write-Verbose "Using default credentials"
         Invoke-RestMethod $uri -Method "PUT" -Headers $headers -ContentType "application/json" -Body ([System.Text.Encoding]::UTF8.GetBytes($jsonBody)) -UseDefaultCredentials | Out-Null
-} 
-else {
-    if ([string]::IsNullOrEmpty($debugpat) -eq $false) {
-        $encodedPat = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(":$debugpat"))
-        $headers["Authorization"] = "Basic $encodedPat"
-    }
+    } 
     else {
-        # Write-Verbose "Using SystemVssConnection personal access token"
-        $vssEndPoint = Get-ServiceEndPoint -Name "SystemVssConnection" -Context $distributedTaskContext
-        $personalAccessToken = $vssEndpoint.Authorization.Parameters.AccessToken
-        $headers["Authorization"] = "Bearer $personalAccessToken"
+        if ([string]::IsNullOrEmpty($debugpat) -eq $false) {
+            $encodedPat = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes(":$debugpat"))
+            $headers["Authorization"] = "Basic $encodedPat"
+        }
+        else {
+            # Write-Verbose "Using SystemVssConnection personal access token"
+            $vssEndPoint = Get-ServiceEndPoint -Name "SystemVssConnection" -Context $distributedTaskContext
+            $personalAccessToken = $vssEndpoint.Authorization.Parameters.AccessToken
+            $headers["Authorization"] = "Bearer $personalAccessToken"
+        }
+        Invoke-RestMethod $uri -Method "PUT" -Headers $headers -ContentType "application/json" -Body ([System.Text.Encoding]::UTF8.GetBytes($jsonBody))
     }
-    Invoke-RestMethod $uri -Method "PUT" -Headers $headers -ContentType "application/json" -Body ([System.Text.Encoding]::UTF8.GetBytes($jsonBody))
-}
 }
 
 function Render() {
@@ -771,15 +767,15 @@ function Invoke-Template {
                 else {
                     # nothing to expand just process the line
                     $out += $line | render
-                $out += "`n"
+                    $out += "`n"
+                }
             }
         }
+        $out
     }
-    $out
-}
-else {
-    write-error "Cannot load template file [$templatefile] or it is empty"
-} 
+    else {
+        write-error "Cannot load template file [$templatefile] or it is empty"
+    } 
 }
 
 function Get-BuildDataSet {
@@ -850,7 +846,7 @@ function Get-ReleaseByDefinitionId {
     $uri = "$($rmtfsUri)/$($teamproject)/_apis/release/releases?definitionId=$($releasedefid)&`$Expand=environments,artifacts&queryOrder=descending&api-version=3.0-preview"
 
     $jsondata = Invoke-GetCommand -uri $uri -usedefaultcreds $usedefaultcreds | ConvertFrom-JsonUsingDOTNET
-$jsondata.value
+    $jsondata.value
 }
  
 # types to make the switches neater
