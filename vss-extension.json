@@ -1,0 +1,46 @@
+{
+    "manifestVersion": 1,
+    "id": "Accelsior-GenerateReleaseNotes-Task",
+    "version": "4.0.8",
+    "name": "Accelsior Generate Release Notes Build Task",
+    "publisher": "MichaelBoutros",
+    "description": "Generates a Markdown Release notes file.",
+    "categories": [
+        "Build and release"
+    ],
+    "galleryFlags": [
+        "Public"
+    ],
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],
+    "tags": [
+        "Release",
+        "Package",
+        "Publish"
+    ],
+    "branding": {
+        "color": "#f97923",
+        "theme": "dark"
+    },
+    "content": {},
+    "files": [
+        {
+            "path": "AccGenerateReleaseNotesTask"
+        }
+    ],
+    "contributions": [
+        {
+            "id": "Accelsior-Generate-Release-Notes",
+            "type": "ms.vss-distributed-task.task",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "AccGenerateReleaseNotesTask"
+            }
+        }
+    ]
+}
