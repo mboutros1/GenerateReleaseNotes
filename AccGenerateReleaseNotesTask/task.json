@@ -3,7 +3,7 @@
     "name": "AccelsiorGenerateReleaseNotes",
     "friendlyName": "Accelsior Generate Release Notes",
     "description": "Accelsior Generates a release notes file in a format of your choice",
-    "helpMarkDown": "Version: 4.0.8",
+    "helpMarkDown": "Version: 4.0.12",
     "category": "Utility",
     "visibility": [
         "Build"
@@ -12,7 +12,7 @@
     "version": {
         "Major": "4",
         "Minor": "0",
-        "Patch": "8"
+        "Patch": "12"
     },
     "minimumAgentVersion": "1.82.0",
     "groups": [

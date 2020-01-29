@@ -162,9 +162,13 @@ else {
         else {
             $stageName = $overrideStageName
         }
-
-        Write-Verbose "Processing all releases back to the last successful release in stage [$stageName]"
-           
+        if ($null -ne $overrideStartReleaseId ) {
+            Write-Verbose "Processing all releases back to the last successful release in stage [$stageName]"
+        }
+        else 
+        { 
+            Write-Verbose "Processing all releases back to release $overrideStartReleaseId in stage [$stageName]"
+        }
         $allReleases = Get-ReleaseByDefinitionId -tfsUri $collectionUrl -teamproject $teamproject -releasedefid $releasedefid -usedefaultcreds $usedefaultcreds
 
         # find the set of release since the last good release of a given stage
@@ -316,7 +320,7 @@ else {
     write-Verbose "Appending to output file [$outputfile]."
     Add-Content -Path $outputfile -Value $outputmarkdown -Encoding UTF8  
 }
-
+$env:ReleaseNotes = $outputmarkdown
 if ([string]::IsNullOrEmpty($outputvariablename)) {
     write-Verbose "Skipping setting output variable name as parameter was not set."
 } 
@@ -324,7 +328,7 @@ else {
     # reload the file, this is quick fix for issues we see that only the first line 
     # is returned as in the output varibable if we just try to pipe the local variable
     $file = Get-Content $outputfile
-    $env:ReleaseNotes = [System.IO.File]::ReadAllText( (Join-Path(pwd)  $outputfile))  
+    $env:ReleaseNotes = [System.IO.File]::ReadAllText($outputfile)  
     Write-Verbose "Setting variable: [$outputvariablename] = $file" -Verbose
     $joined = $file -join '`n'
     Write-Host ("##vso[task.setvariable variable=$outputvariablename;]$joined")

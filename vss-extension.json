@@ -1,7 +1,7 @@
 {
     "manifestVersion": 1,
     "id": "Accelsior-GenerateReleaseNotes-Task",
-    "version": "4.0.8",
+    "version": "4.0.12",
     "name": "Accelsior Generate Release Notes Build Task",
     "publisher": "MichaelBoutros",
     "description": "Generates a Markdown Release notes file.",

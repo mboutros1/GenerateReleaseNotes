@@ -1,0 +1,11 @@
+$d = "C:\Users\miboutros\OneDrive - Deloitte (O365D)\Scripts\GenerateReleaseNotes\TestResult"
+$env:SYSTEM_DEFAULTWORKINGDIRECTORY = "$d"
+$env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI = "http://tfsabs.sltc.com:8080/tfs/DefaultCollection/"
+$env:SYSTEM_TEAMPROJECT = "ABSSuite Web"
+$env:BUILD_BUILDID = "38904"
+$env:BUILD_DEFINITIONNAME = "ABS-Sprint-11.12"
+$env:BUILD_BUILDNUMBER = "11.12.114 - 20191121.38904"
+$env:fullVer = "11.12"
+Write-Host "Ver $env:Ver" 
+$VerbosePreference = "Continue"
+.\GenerateReleaseNotes.ps1 -outputfile "rd.md"  -publishLoc "$d\pub\" -notesRootPath "$d\root" -templateLocation "File" -templatefile "$d\RNTemplate.txt" -emptySetText "None" -generateForOnlyPrimary $false -usedefaultcreds $true -generateForCurrentRelease $false -maxWi 500 -maxChanges 500 -appendToFile $false -showParents $true -wiFilter "Bug,PRODUCT BACKLOG ITEM,Feature,Epic" -unifiedList $true -outputvariablename "ReleaseNotesTotal" ## -overrideStartReleaseId 26111 

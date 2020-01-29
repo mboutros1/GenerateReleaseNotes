@@ -44,4 +44,4 @@ Write-Host $env:SYSTEM_DEFAULTWORKINGDIRECTORY
 # }
 
 
-.\GenerateReleaseNotes.ps1 "releaseNotes.md" "ReleaseNotes" "C:\one\Scripts\ABSRNotes\RNTemplate.txt" "" "File" True False False "" "" 50 50 "" "" True False True
+#.\GenerateReleaseNotes.ps1 "releaseNotes.md" "ReleaseNotes" "C:\one\Scripts\ABSRNotes\RNTemplate.txt" "" "File" True False False "" "" 50 50 "" "" True False True
